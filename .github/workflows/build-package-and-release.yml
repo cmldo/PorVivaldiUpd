@@ -12,30 +12,52 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2️⃣ Setup .NET 10 SDK
       - name: Setup .NET 10 SDK
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '10.0.x'
 
+      # 3️⃣ Restore dependencies
       - name: Restore dependencies
         run: dotnet restore
 
+      # 4️⃣ Build project
       - name: Build project
         run: dotnet build -c Release --no-restore
 
+      # 5️⃣ Publish project
       - name: Publish project
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
 
-      - name: Create ZIP of publish output
+      # 6️⃣ Create ZIP of published output
+      - name: Create ZIP
         run: |
           $zipFile = "PorVivaldiUpd-$((Get-Date).ToString('yyyyMMdd-HHmmss')).zip"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           [System.IO.Compression.ZipFile]::CreateFromDirectory("./publish", $zipFile)
           Write-Host "ZIP_FILE=$zipFile" >> $env:GITHUB_ENV
 
+      # 7️⃣ Configure Git for tagging
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      # 8️⃣ Create a new tag for this release
+      - name: Create Tag
+        run: |
+          TAG="v${GITHUB_RUN_NUMBER}"
+          git tag -a $TAG -m "Release $TAG"
+          git push origin $TAG
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 9️⃣ Create GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -44,6 +66,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # 🔟 Upload ZIP to the Release
       - name: Upload ZIP to Release
         uses: softprops/action-gh-release@v2
         with:
