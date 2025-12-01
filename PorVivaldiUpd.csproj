@@ -7,6 +7,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>PorVivaldiUpd</RootNamespace>
+    <UseWindowsForms>true</UseWindowsForms> <!-- THIS IS REQUIRED -->
+    <OutputType>WinExe</OutputType>           <!-- GUI executable -->
   </PropertyGroup>
+
 
 </Project>
