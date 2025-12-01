@@ -1,0 +1,52 @@
+name: Build, Package, and Release PorVivaldiUpd
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build project
+        run: dotnet build -c Release --no-restore
+
+      - name: Publish project
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
+
+      - name: Create ZIP of publish output
+        run: |
+          $zipFile = "PorVivaldiUpd-$((Get-Date).ToString('yyyyMMdd-HHmmss')).zip"
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::CreateFromDirectory("./publish", $zipFile)
+          Write-Host "ZIP_FILE=$zipFile" >> $env:GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: PorVivaldiUpd Release ${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ZIP to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_FILE }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
