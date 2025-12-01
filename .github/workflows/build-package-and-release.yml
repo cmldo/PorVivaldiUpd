@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # manual trigger
+  workflow_dispatch:
 
 jobs:
   build-and-release:
@@ -32,9 +32,21 @@ jobs:
 
       # 5️⃣ Publish project
       - name: Publish project
-        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o ./publish
 
-      # 6️⃣ Create ZIP of published output
+      # 6️⃣ Ensure .exe exists
+      - name: Verify EXE exists
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem ./publish -Filter *.exe | Select-Object -First 1
+          if (-not $exe) {
+              Write-Error "No .exe found in publish folder! Check your .csproj settings."
+              exit 1
+          }
+          Write-Host "Found executable: $($exe.FullName)"
+          echo "EXE_FILE=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      # 7️⃣ Create ZIP of published output
       - name: Create ZIP
         shell: pwsh
         run: |
@@ -43,14 +55,14 @@ jobs:
           [System.IO.Compression.ZipFile]::CreateFromDirectory("./publish", $zipFile)
           Write-Host "ZIP_FILE=$zipFile" >> $env:GITHUB_ENV
 
-      # 7️⃣ Configure Git for tagging
+      # 8️⃣ Configure Git for tagging
       - name: Configure Git
         shell: pwsh
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      # 8️⃣ Create a new tag for this release
+      # 9️⃣ Create a new tag for this release
       - name: Create Tag
         shell: pwsh
         run: |
@@ -60,12 +72,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 9️⃣ Create GitHub Release and upload ZIP
+      # 🔟 Create GitHub Release and upload ZIP
       - name: Create GitHub Release and Upload ZIP
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: PorVivaldiUpd Release ${{ github.run_number }}
           files: ${{ env.ZIP_FILE }}
+          overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
