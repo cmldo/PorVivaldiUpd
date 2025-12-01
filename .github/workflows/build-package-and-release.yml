@@ -1,26 +1,24 @@
-name: Build, Package, and Release PorVivaldiUpd
+name: Build and Release
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build-and-release:
-    runs-on: windows-latest
+    runs-on: windows-2025
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       # 2️⃣ Setup .NET 10 SDK
-      - name: Setup .NET 10 SDK
+      - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: 10.0.x
 
       # 3️⃣ Restore dependencies
       - name: Restore dependencies
@@ -30,12 +28,14 @@ jobs:
       - name: Build project
         run: dotnet build -c Release --no-restore
 
-      # 5️⃣ Publish project
+      # 5️⃣ Publish self-contained single EXE
       - name: Publish project
-        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=false -o ./publish
+        run: |
+          dotnet publish -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:PublishTrimmed=false -o ./publish
 
-      # 6️⃣ Ensure .exe exists
-      - name: Verify EXE exists
+      # 6️⃣ Get EXE path
+      - name: Find executable
         shell: pwsh
         run: |
           $exe = Get-ChildItem ./publish -Filter *.exe | Select-Object -First 1
@@ -46,39 +46,40 @@ jobs:
           Write-Host "Found executable: $($exe.FullName)"
           echo "EXE_FILE=$($exe.FullName)" >> $env:GITHUB_ENV
 
-      # 7️⃣ Create ZIP of published output
-      - name: Create ZIP
+      # 7️⃣ Zip publish folder
+      - name: Zip publish folder
         shell: pwsh
         run: |
           $zipFile = "PorVivaldiUpd-$((Get-Date).ToString('yyyyMMdd-HHmmss')).zip"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           [System.IO.Compression.ZipFile]::CreateFromDirectory("./publish", $zipFile)
-          Write-Host "ZIP_FILE=$zipFile" >> $env:GITHUB_ENV
+          Write-Host "Created ZIP: $zipFile"
+          echo "ZIP_FILE=$zipFile" >> $env:GITHUB_ENV
 
       # 8️⃣ Configure Git for tagging
-      - name: Configure Git
-        shell: pwsh
+      - name: Git config
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      # 9️⃣ Create a new tag for this release
-      - name: Create Tag
+      # 9️⃣ Create tag
+      - name: Create tag
         shell: pwsh
         run: |
           $TAG = "v$env:GITHUB_RUN_NUMBER"
           git tag -a $TAG -m "Release $TAG"
           git push origin $TAG
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "TAG=$TAG" >> $env:GITHUB_ENV
 
-      # 🔟 Create GitHub Release and upload ZIP
-      - name: Create GitHub Release and Upload ZIP
+      # 🔟 Create GitHub release with EXE and ZIP
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
+          tag_name: ${{ env.TAG }}
           name: PorVivaldiUpd Release ${{ github.run_number }}
-          files: ${{ env.ZIP_FILE }}
           overwrite_files: true
+          files: |
+            ${{ env.EXE_FILE }}
+            ${{ env.ZIP_FILE }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
