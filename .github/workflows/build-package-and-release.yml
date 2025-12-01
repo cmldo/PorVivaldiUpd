@@ -36,6 +36,7 @@ jobs:
 
       # 6️⃣ Create ZIP of published output
       - name: Create ZIP
+        shell: pwsh
         run: |
           $zipFile = "PorVivaldiUpd-$((Get-Date).ToString('yyyyMMdd-HHmmss')).zip"
           Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -44,14 +45,16 @@ jobs:
 
       # 7️⃣ Configure Git for tagging
       - name: Configure Git
+        shell: pwsh
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
       # 8️⃣ Create a new tag for this release
       - name: Create Tag
+        shell: pwsh
         run: |
-          TAG="v${GITHUB_RUN_NUMBER}"
+          $TAG = "v$env:GITHUB_RUN_NUMBER"
           git tag -a $TAG -m "Release $TAG"
           git push origin $TAG
         env:
