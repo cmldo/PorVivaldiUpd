@@ -97,7 +97,7 @@ public partial class Form1 : Form
             Text     = "Elimina file scaricato dopo l'aggiornamento",
             Checked  = true,
             AutoSize = true,
-            Location = new Point(16, 345),
+            Location = new Point(16, 335),
             Font     = new Font("Segoe UI", 9.5F)
         };
 
@@ -106,7 +106,7 @@ public partial class Form1 : Form
             Text     = "Crea collegamento sul Desktop",
             Checked  = false,
             AutoSize = true,
-            Location = new Point(16, 368),
+            Location = new Point(16, 355),
             Font     = new Font("Segoe UI", 9.5F)
         };
 
@@ -340,7 +340,7 @@ public partial class Form1 : Form
     {
         try
         {
-            string appDir    = Path.Combine(ExeDir, a.Folder, "Application");
+            string appDir    = Path.Combine(ExeDir, a.Folder);
             string targetExe = Path.Combine(appDir, "vivaldi.exe");
             string profileCommonDir = Path.Combine(ExeDir, "profile");
             string profileLocalDir  = Path.Combine(ExeDir, a.Folder, "profile");
